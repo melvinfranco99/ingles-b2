@@ -1,0 +1,145 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Examen B2 First</title>
+<link rel="stylesheet" href="assets/style.css">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎓</text></svg>">
+</head>
+<body>
+<main class="wrap">
+<div class="paper-head"><h1 id="title">Examen</h1><div class="row"><a class="btn ghost sm" id="prev">◀ Anterior</a><a class="btn ghost sm" href="examenes.html">Todos</a><a class="btn ghost sm" id="next">Siguiente ▶</a></div></div>
+<p class="muted">Haz las cuatro pruebas en orden, respetando los tiempos. Corrige cada prueba al terminarla; al final verás tu nota aproximada en la escala Cambridge. En el Listening cada audio solo se puede escuchar <b>2 veces</b> (como en el examen real).</p>
+<div id="exam"></div>
+</main>
+<script src="assets/app.js"></script>
+<script>
+const N = Math.min(50, Math.max(1, parseInt(new URLSearchParams(location.search).get('n')) || 1));
+document.title = `Examen ${N} · B2 First`;
+$('#title').textContent = `Examen ${N} de 50`;
+$('#prev').href = `examen.html?n=${Math.max(1, N - 1)}`;
+$('#next').href = `examen.html?n=${Math.min(50, N + 1)}`;
+
+const PAPERS = { rue: ['Reading & Use of English', 70], wri: ['Writing', 40], lis: ['Listening', 30], spk: ['Speaking', 25] };
+function saveResult(key, score, max) {
+  const all = store.get('results', {}); const r = all[N] || {};
+  r[key] = Math.round(toScale(score / max));
+  r[key + 'Raw'] = `${score}/${max}`;
+  const sc = Object.keys(PAPERS).filter(k => r[k]).map(k => k === 'rue' ? [r[k], r[k]] : [r[k]]).flat();
+  r.overall = Math.round(sc.reduce((a, b) => a + b, 0) / sc.length);
+  r.complete = Object.keys(PAPERS).every(k => r[k]);
+  r.date = new Date().toISOString().slice(0, 10);
+  all[N] = r; store.set('results', all);
+  showResults();
+}
+function scoreBox(score, max) {
+  const sc = toScale(score / max), [g, cls] = grade(sc);
+  return `<div class="score ${cls}">Puntuación: ${score}/${max} (${Math.round(score / max * 100)} %) → <b>${sc}</b> en la escala Cambridge · ${g}</div>`;
+}
+
+/* Un bloque de prueba con timer y botón de corrección */
+function paper(container, key, minutes, parts) {
+  const head = document.createElement('div'); head.className = 'paper-head';
+  head.innerHTML = `<h2 style="border:0">${PAPERS[key][0]}</h2>`;
+  head.append(timer(minutes * 60, `Empezar (${minutes} min)`));
+  container.append(head);
+  const rs = [];
+  parts.forEach(([title, instr, type, data, ...args]) => {
+    const sec = document.createElement('section');
+    sec.innerHTML = `<h3 class="part-title">${title}</h3><p class="instr">${instr}</p>`;
+    const body = document.createElement('div'); sec.append(body); container.append(sec);
+    rs.push(R[type](body, data, ...args));
+  });
+  const foot = document.createElement('div'); foot.innerHTML = `<button class="btn">✔ Corregir ${PAPERS[key][0]}</button><div class="res"></div>`;
+  container.append(foot);
+  const btn = $('button', foot);
+  const update = () => { const t = rs.reduce((a, r) => { const s = r.score(); return [a[0] + s.score, a[1] + s.max]; }, [0, 0]); $('.res', foot).innerHTML = scoreBox(t[0], t[1]); saveResult(key, t[0], t[1]); };
+  btn.onclick = () => { if (!confirmLeft(container)) return; rs.forEach(r => r.check()); btn.disabled = true; TTS.stop(); update(); };
+  scoreHooks.push(() => btn.disabled && update());
+}
+function confirmLeft(c) {
+  const empty = $$('input[type=text],select', c).filter(x => !x.value).length;
+  const radiosQ = $$('.q', c).filter(q => $('input[type=radio]', q) && !$('input:checked', q)).length;
+  const n = empty + radiosQ;
+  if (!n) return true;
+  const w = c.querySelector('.leftwarn') || document.createElement('div');
+  w.className = 'warn leftwarn';
+  if (w.dataset.ok) return true;
+  w.innerHTML = `Te quedan <b>${n}</b> respuestas en blanco. En el examen real <b>no restan</b>: ¡rellénalas! Pulsa «Corregir» otra vez si quieres corregir igualmente.`;
+  w.dataset.ok = 1; c.lastElementChild.before(w); return false;
+}
+
+/* Writing */
+function writingPaper(c, d) {
+  const head = document.createElement('div'); head.className = 'paper-head';
+  head.innerHTML = `<h2 style="border:0">Writing</h2>`; head.append(timer(80 * 60, 'Empezar (80 min)')); c.append(head);
+  c.insertAdjacentHTML('beforeend', `<p class="instr">Escribe dos textos de 140–190 palabras. Parte 1 obligatoria; en la Parte 2 elige una tarea. Consulta los <a href="writing.html">modelos</a> solo después de escribir.</p>
+   <h3 class="part-title">Part 1 · Essay</h3><div class="card">In your English class you have been talking about ${d.w1.topic}. Now your English teacher has asked you to write an essay. Write an essay using all the notes and giving reasons for your point of view.<p><b>${d.w1.q}</b></p><p>Notes — Write about:<br>1. ${d.w1.notes[0]}<br>2. ${d.w1.notes[1]}<br>3. ……………… (your own idea)</p></div><div id="w1"></div>
+   <h3 class="part-title">Part 2 · Elige una</h3>${d.w2.map((t, i) => `<label class="opt card" style="display:flex"><input type="radio" name="w2" value="${i}" ${i === 0 ? 'checked' : ''}><span><b>${i + 2}. ${t.type}</b><br>${t.task}</span></label>`).join('')}<div id="w2"></div>
+   <h3 class="part-title">Autoevaluación</h3><p class="small muted">Cuando termines, compara con los modelos de la sección Writing y puntúa con sinceridad cada criterio de 0 a 5 (3 = aprobado justo, 5 = excelente). Si puedes, pide a un profesor o a alguien con nivel C1 que te lo corrija.</p>
+   <div class="crit" id="crit"></div><button class="btn" id="wsave" style="margin-top:.6rem">Guardar nota de Writing</button><div id="wres"></div>`);
+  $('#w1', c).append(writingBox(`ex${N}.w1`));
+  $('#w2', c).append(writingBox(`ex${N}.w2`));
+  const crits = ['Content', 'Communicative Achievement', 'Organisation', 'Language'];
+  $('#crit', c).innerHTML = ['Parte 1', 'Parte 2'].map(p => crits.map(k => `<span>${p} · ${k}</span><select>${[0, 1, 2, 3, 4, 5].map(v => `<option ${v === 3 ? 'selected' : ''}>${v}</option>`).join('')}</select>`).join('')).join('');
+  $('#wsave', c).onclick = () => { const s = $$('#crit select', c).reduce((a, x) => a + +x.value, 0); $('#wres', c).innerHTML = scoreBox(s, 40); saveResult('wri', s, 40); };
+}
+
+/* Speaking */
+function speakingPaper(c, d) {
+  const s = d.s;
+  c.insertAdjacentHTML('beforeend', `<div class="paper-head"><h2 style="border:0">Speaking</h2></div>
+  <p class="instr">Habla en voz alta, idealmente con un compañero. Usa el temporizador y la grabadora. Pulsa 🔊 para oír la pregunta del examinador.</p>
+  <h3 class="part-title">Part 1 · Interview (2 min)</h3><ul>${s.p1.map(q => `<li data-say>${q}</li>`).join('')}</ul><div class="t1"></div>
+  <h3 class="part-title">Part 2 · Long turn (1 min)</h3><p data-say><b>${s.p2.q}</b></p><div class="photo"><b>Photo A:</b> ${s.p2.a}</div><div class="photo"><b>Photo B:</b> ${s.p2.b}</div><p class="small">Compara las dos fotos y responde a la pregunta. Después, pregunta para tu compañero (30 seg.): <i data-say>${s.p2.f}</i></p><div class="t2"></div>
+  <h3 class="part-title">Part 3 · Collaborative task (2 min + 1 min)</h3><div class="card"><p data-say><b>${s.p3.q}</b></p><ul>${s.p3.ideas.map(i => `<li>${i}</li>`).join('')}</ul><p data-say><i>${s.p3.d}</i></p></div><div class="t3"></div>
+  <h3 class="part-title">Part 4 · Discussion (4 min)</h3><ul>${s.p4.map(q => `<li data-say>${q}</li>`).join('')}</ul><div class="t4"></div>
+  <h3 class="part-title">Autoevaluación</h3><p class="small muted">Escucha tus grabaciones y puntúa de 0 a 5.</p><div class="crit" id="scrit"></div><button class="btn" id="ssave" style="margin-top:.6rem">Guardar nota de Speaking</button><div id="sres"></div>`);
+  [[120, '.t1'], [60, '.t2'], [180, '.t3'], [240, '.t4']].forEach(([t, sel]) => { const el = $(sel, c); el.append(timer(t)); el.append(recorder()); });
+  speakables(c);
+  $('#scrit', c).innerHTML = ['Grammar & Vocabulary', 'Discourse Management', 'Pronunciation', 'Interactive Communication', 'Global Achievement'].map(k => `<span>${k}</span><select>${[0, 1, 2, 3, 4, 5].map(v => `<option ${v === 3 ? 'selected' : ''}>${v}</option>`).join('')}</select>`).join('');
+  $('#ssave', c).onclick = () => { const v = $$('#scrit select', c).reduce((a, x) => a + +x.value, 0); $('#sres', c).innerHTML = scoreBox(v, 25); saveResult('spk', v, 25); };
+}
+
+function showResults() {
+  const r = store.get('results', {})[N]; const el = $('#results'); if (!el) return;
+  if (!r) { el.innerHTML = '<p class="muted">Aún no has corregido ninguna prueba de este examen.</p>'; return; }
+  const [g, cls] = grade(r.overall);
+  el.innerHTML = `<div class="table-wrap"><table><tr><th>Prueba</th><th>Bruto</th><th>Escala</th></tr>${Object.entries(PAPERS).map(([k, [n]]) => `<tr><td>${n}</td><td>${r[k + 'Raw'] || '—'}</td><td>${r[k] || '—'}</td></tr>`).join('')}</table></div>
+   <div class="score ${cls}">Nota global${r.complete ? '' : ' (provisional: faltan pruebas)'}: <b>${r.overall}</b> · ${g}</div>
+   <p class="small muted">La conversión a la escala es aproximada y está basada en los umbrales publicados (≈60 % = 160, ≈80 % = 180). Reading &amp; Use of English cuenta doble.</p>
+   ${N < 50 ? `<a class="btn" href="examen.html?n=${N + 1}">Mañana: examen ${N + 1} →</a>` : '<p><b>¡Has completado los 50 exámenes! Estás preparado/a.</b></p>'}`;
+}
+
+function render(d) {
+  const root = $('#exam');
+  root.innerHTML = `<div class="tabs-root" id="extabs"><div class="tabs"><button>1 · Reading &amp; UoE</button><button>2 · Writing</button><button>3 · Listening</button><button>4 · Speaking</button><button>📊 Resultados</button></div>
+   <section class="tabpanel" id="pr"></section><section class="tabpanel" id="pw"></section><section class="tabpanel" id="pl"></section><section class="tabpanel" id="ps"></section><section class="tabpanel"><h2>Resultados del examen ${N}</h2><div id="results"></div></section></div>`;
+  paper($('#pr'), 'rue', 75, [
+    [`Part 1 · ${d.p1.title}`, 'For questions 1–8, read the text and decide which answer (A, B, C or D) best fits each gap.', 'p1', d.p1],
+    [`Part 2 · ${d.p2.title}`, 'For questions 9–16, think of the word which best fits each gap. Use only ONE word in each gap.', 'p2', d.p2],
+    [`Part 3 · ${d.p3.title}`, 'For questions 17–24, use the word given in capitals to form a word that fits in the gap.', 'p3', d.p3],
+    ['Part 4', 'For questions 25–30, complete the second sentence so that it has a similar meaning to the first sentence, using the word given. Do not change the word given. You must use between two and five words, including the word given.', 'p4', d.p4],
+    ['Part 5', 'You are going to read an extract. For questions 31–36, choose the answer (A, B, C or D) which you think fits best according to the text.', 'p5', d.p5, 2, 31],
+    ['Part 6', 'Six sentences have been removed from the text. Choose from the sentences A–G the one which fits each gap (37–42). There is one extra sentence which you do not need to use.', 'p6', d.p6],
+    ['Part 7', 'For questions 43–52, choose from the sections (A–D/E). The sections may be chosen more than once.', 'p7', d.p7, 1, 43],
+  ]);
+  writingPaper($('#pw'), d);
+  paper($('#pl'), 'lis', 40, [
+    ['Part 1', 'You will hear people talking in eight different situations. For questions 1–8, choose the best answer (A, B or C).', 'l1', d.l1],
+    ['Part 2', 'For questions 9–18, complete the sentences with a word or short phrase.', 'l2', d.l2],
+    ['Part 3', 'For questions 19–23, choose from the list (A–H) what each speaker says. Use the letters only once. There are three extra letters.', 'l3', d.l3],
+    ['Part 4', 'For questions 24–30, choose the best answer (A, B or C).', 'l4', d.l4],
+  ]);
+  speakingPaper($('#ps'), d);
+  tabs($('#extabs'));
+  showResults();
+}
+window.EXAM = render;
+const sc = document.createElement('script');
+sc.src = `data/exams/e${String(N).padStart(2, '0')}.js`;
+sc.onerror = () => $('#exam').innerHTML = '<div class="warn">No se ha podido cargar este examen.</div>';
+document.addEventListener('DOMContentLoaded', () => document.body.append(sc));
+</script>
+</body>
+</html>

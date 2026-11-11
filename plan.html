@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Plan de 50 días</title>
+<link rel="stylesheet" href="assets/style.css">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎓</text></svg>">
+</head>
+<body>
+<main class="wrap">
+<h1>Plan de 50 días</h1>
+<p>Antes de empezar el plan, dedica <b>3–5 días</b> a leer toda la web (secciones 1 a 8) y hacer los ejercicios de práctica. Después, cada día: <b>un examen completo + un repaso dirigido</b>. Marca cada día al terminarlo; se guarda en tu navegador.</p>
+
+<h2>Rutina diaria (≈ 3 h – 4 h)</h2>
+<div class="table-wrap"><table>
+<tr><th>Bloque</th><th>Tiempo</th><th>Qué hacer</th></tr>
+<tr><td>1. Examen del día</td><td>≈ 3 h 30 (completo) o por partes</td><td>Reading &amp; UoE (75′) · Writing (80′, o 1 de las 2 tareas si vas justo) · Listening (40′) · Speaking (15′ con grabadora)</td></tr>
+<tr><td>2. Análisis de errores</td><td>20′</td><td>Revisa cada fallo: ¿vocabulario, gramática, despiste o técnica? Apúntalo en tu cuaderno de errores.</td></tr>
+<tr><td>3. Repaso dirigido</td><td>20′</td><td>El tema del día de la tabla de abajo.</td></tr>
+<tr><td>4. Vocabulario</td><td>10′</td><td>Tarjetas de la sección Vocabulario.</td></tr>
+</table></div>
+<div class="tip"><b>¿No tienes 3 horas al día?</b> Haz el examen en dos días (día A: Reading &amp; UoE + Listening; día B: Writing + Speaking). Tardarás 100 días en lugar de 50, pero con el mismo beneficio. Lo importante es la <b>constancia</b>.</div>
+<div class="key"><b>La última semana antes del examen real:</b> no aprendas nada nuevo. Repite los exámenes en los que sacaste peor nota, repasa tu cuaderno de errores y tus frases de Writing y Speaking.</div>
+
+<h2>Calendario</h2>
+<div class="table-wrap"><table id="plan"><tr><th>✔</th><th>Día</th><th>Examen</th><th>Repaso dirigido</th></tr></table></div>
+</main>
+<script src="assets/app.js"></script>
+<script>
+const TOPICS = [
+ ['Presentes y verbos de estado','gramatica.html#g1'],['Pasados, used to/would','gramatica.html#g2'],['Present perfect','gramatica.html#g3'],['Futuros','gramatica.html#g4'],['Collocations make/do/take','vocabulario.html'],
+ ['Condicionales','gramatica.html#g5'],['Wish / would rather','gramatica.html#g6'],['Essay: estructura y frases','writing.html'],['Phrasal verbs (1ª mitad)','vocabulario.html'],['Parte 4: transformaciones','use-of-english.html'],
+ ['Pasiva y causativo','gramatica.html#g7'],['Estilo indirecto y verbos de reporte','gramatica.html#g8'],['Article: modelo y frases','writing.html'],['Word formation: sufijos','vocabulario.html'],['Speaking Parte 2: comparar fotos','speaking.html'],
+ ['Modales y deducción','gramatica.html#g9'],['Relativos','gramatica.html#g10'],['Email/letter formal e informal','writing.html'],['Phrasal verbs (2ª mitad)','vocabulario.html'],['Listening Parte 2: dictados','listening.html'],
+ ['Gerundio o infinitivo','gramatica.html#g11'],['Comparativos','gramatica.html#g12'],['Review: modelo y vocabulario','writing.html'],['Preposiciones dependientes','vocabulario.html'],['Speaking Parte 3: interacción','speaking.html'],
+ ['Artículos y cuantificadores','gramatica.html#g13'],['so/such, too/enough, contraste','gramatica.html#g14'],['Report: modelo y frases','writing.html'],['Word formation: prefijos negativos','vocabulario.html'],['Reading Parte 6: cohesión','reading.html'],
+ ['Preguntas indirectas y tags','gramatica.html#g15'],['Inversión y frases enfáticas','gramatica.html#g16'],['Conectores','vocabulario.html'],['Palabras confusas y falsos amigos','vocabulario.html'],['Reading Parte 5: opinión y actitud','reading.html'],
+ ['Repaso: tus errores de gramática','gramatica.html'],['Repaso: tus errores de vocabulario','vocabulario.html'],['Frases comodín de Writing','writing.html'],['Expresiones e idioms','vocabulario.html'],['Speaking Parte 4: opiniones desarrolladas','speaking.html'],
+ ['Vocabulario por temas (1)','vocabulario.html'],['Vocabulario por temas (2)','vocabulario.html'],['Errores típicos de Writing','writing.html'],['Listening: distractores','listening.html'],['Reading Parte 7: paráfrasis','reading.html'],
+ ['Repaso general Use of English','use-of-english.html'],['Repaso general Writing','writing.html'],['Repaso general Speaking','speaking.html'],['Errores típicos del examen','guia.html#errores'],['Día del examen: logística','guia.html#dia']];
+document.addEventListener('DOMContentLoaded', () => {
+  const done = store.get('plan', {}); const res = store.get('results', {});
+  const t = $('#plan');
+  TOPICS.forEach(([name, href], i) => {
+    const n = i + 1; const r = res[n];
+    t.insertAdjacentHTML('beforeend', `<tr><td><input type="checkbox" data-n="${n}" ${done[n] ? 'checked' : ''}></td><td>${n}</td><td><a href="examen.html?n=${n}">Examen ${n}</a>${r && r.overall ? ` <span class="pill">${r.overall}</span>` : ''}</td><td><a href="${href}">${name}</a></td></tr>`);
+  });
+  $$('input[type=checkbox]', t).forEach(c => c.onchange = () => { const d = store.get('plan', {}); d[c.dataset.n] = c.checked; store.set('plan', d); });
+});
+</script>
+</body>
+</html>
