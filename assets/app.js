@@ -151,12 +151,20 @@ const okAny = (val, list) => list.some(a => norm(a) === norm(val));
 const R = {};
 
 /* Part 1: Multiple-choice cloze. d = {text, opts:[[4]], ans:[idx], exp?:[]} */
-R.p1 = (el, d, pts = 1) => { let k = 0;
+/* Orden de opciones: en los exámenes (window.SHUFFLE) se barajan de forma fija por pregunta */
+function hashStr(s) { let h = 2166136261; for (const c of s) { h ^= c.charCodeAt(0); h = Math.imul(h, 16777619); } return h >>> 0; }
+function order(n, key) {
+  const a = [...Array(n).keys()]; if (!window.SHUFFLE) return a;
+  let h = hashStr(key);
+  for (let i = n - 1; i > 0; i--) { h = Math.imul(h ^ (h >>> 15), 2246822507) >>> 0; const j = h % (i + 1); [a[i], a[j]] = [a[j], a[i]]; }
+  return a;
+}
+R.p1 = (el, d, pts = 1) => { let k = 0; const ords = d.opts.map((o, i) => order(o.length, o.join('|') + i));
   el.innerHTML = `<div class="ex-text">${paras(d.text.replace(/\[(\d+)\]/g, (m, n) =>
-    `<span class="gap"><b>${n}</b><select data-i="${k}"><option value="">—</option>${d.opts[k++].map((o, j) => `<option value="${j}">${L[j]} · ${o}</option>`).join('')}</select></span>`))}</div>`;
+    `<span class="gap"><b>${n}</b><select data-i="${k}"><option value="">—</option>${ords[k].map((j, pos) => `<option value="${j}">${L[pos]} · ${d.opts[k][j]}</option>`).join('')}</select></span>${(k++, '')}`))}</div>`;
   let s = 0;
   return {
-    check() { s = 0; $$('select[data-i]', el).forEach(x => { const i = +x.dataset.i, ok = x.value !== '' && +x.value === d.ans[i]; if (ok) s += pts; markEl(x, ok, `${L[d.ans[i]]} ${d.opts[i][d.ans[i]]}`, null, d.exp && d.exp[i]); }); },
+    check() { s = 0; $$('select[data-i]', el).forEach(x => { const i = +x.dataset.i, ok = x.value !== '' && +x.value === d.ans[i]; if (ok) s += pts; markEl(x, ok, `${L[ords[i].indexOf(d.ans[i])]} ${d.opts[i][d.ans[i]]}`, null, d.exp && d.exp[i]); }); },
     score: () => ({ score: s, max: d.ans.length * pts }),
   };
 };
@@ -198,8 +206,11 @@ R.p4 = (el, d, pts = 2) => {
 
 /* Preguntas de opción múltiple genéricas. qs=[{q, o:[...], a, exp?}] */
 function mcqHTML(qs, base, start = 1) {
-  return qs.map((q, i) => `<div class="q" data-i="${i}"><div class="qt">${start + i}. ${q.q}</div>${q.o.map((o, j) =>
-    `<label class="opt"><input type="radio" name="${base}-${i}" value="${j}"><span><b>${L[j]}</b> ${o}</span></label>`).join('')}</div>`).join('');
+  return qs.map((q, i) => `<div class="q" data-i="${i}"><div class="qt">${start + i}. ${q.q}</div>${optsHTML(q, `${base}-${i}`)}</div>`).join('');
+}
+function optsHTML(q, name) {
+  return order(q.o.length, q.q + '|' + q.o.join('|')).map((j, pos) =>
+    `<label class="opt"><input type="radio" name="${name}" value="${j}"><span><b>${L[pos]}</b> ${q.o[j]}</span></label>`).join('');
 }
 function mcqCheck(el, qs, pts) {
   let s = 0;
@@ -207,10 +218,10 @@ function mcqCheck(el, qs, pts) {
     const i = +qd.dataset.i, q = qs[i];
     const sel = $('input:checked', qd); const v = sel ? +sel.value : -1;
     $$('input', qd).forEach(x => x.disabled = true);
-    const labels = $$('.opt', qd);
-    labels[q.a].classList.add('is-ok');
-    if (v === q.a) s += pts; else if (v >= 0) labels[v].classList.add('is-bad');
-    if (v < 0) { const n = document.createElement('div'); n.className = 'fix'; n.textContent = 'Sin responder → ' + L[q.a]; qd.append(n); }
+    const lab = j => $$('.opt', qd).find(l => +$('input', l).value === j);
+    lab(q.a).classList.add('is-ok');
+    if (v === q.a) s += pts; else if (v >= 0) lab(v).classList.add('is-bad');
+    if (v < 0) { const n = document.createElement('div'); n.className = 'fix'; n.textContent = 'Sin responder → ' + $('b', lab(q.a)).textContent; qd.append(n); }
     if (q.exp) { const x = document.createElement('div'); x.className = 'explain'; x.innerHTML = '💡 ' + q.exp; qd.append(x); }
   });
   return s;
@@ -252,8 +263,7 @@ R.p7 = (el, d, pts = 1, start = 1) => {
 /* Listening Part 1: d = [{ctx, q, o:[3], a, script:[[voz,txt]]}] */
 R.l1 = (el, d, maxPlays = 2) => {
   const b = 'l' + (++uid); const bars = [];
-  el.innerHTML = d.map((x, i) => `<div class="q" data-i="${i}"><div class="qt">${i + 1}. <span class="muted">${x.ctx}</span><br>${x.q}</div><div class="slot"></div>${x.o.map((o, j) =>
-    `<label class="opt"><input type="radio" name="${b}-${i}" value="${j}"><span><b>${L[j]}</b> ${o}</span></label>`).join('')}<div class="tr"></div></div>`).join('');
+  el.innerHTML = d.map((x, i) => `<div class="q" data-i="${i}"><div class="qt">${i + 1}. <span class="muted">${x.ctx}</span><br>${x.q}</div><div class="slot"></div>${optsHTML(x, `${b}-${i}`)}<div class="tr"></div></div>`).join('');
   $$('.q', el).forEach((qd, i) => { const ab = audioBar([['N', d[i].ctx], ...d[i].script], maxPlays); bars.push(ab); $('.slot', qd).append(ab); });
   let s = 0;
   return {

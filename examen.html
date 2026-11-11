@@ -14,6 +14,7 @@
 </main>
 <script src="assets/app.js"></script>
 <script>
+window.SHUFFLE = true;
 const N = Math.min(50, Math.max(1, parseInt(new URLSearchParams(location.search).get('n')) || 1));
 document.title = `Examen ${N} · B2 First`;
 $('#title').textContent = `Examen ${N} de 50`;
