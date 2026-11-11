@@ -37,7 +37,7 @@ p4:[
 {s1:'They say the new museum is excellent.',key:'SAID',s2:'The new museum ___ excellent.',ans:['is said to be']},
 {s1:'I didn\'t go to the concert because I was ill.',key:'WOULD',s2:'If I hadn\'t been ill, I ___ the concert.',ans:['would have gone to']},
 {s1:'Please don\'t tell anyone about this.',key:'RATHER',s2:'I\'d ___ anyone about this.',ans:['rather you didn\'t tell','rather you did not tell']},
-{s1:'It\'s not necessary to bring your passport.',key:'NEED',s2:'You ___ your passport.',ans:['don\'t need to bring','needn\'t bring','do not need to bring']}],
+{s1:'It\'s not necessary to bring your passport.',key:'NEED',s2:'You ___ your passport.',ans:['don\'t need to bring','do not need to bring']}],
 p5:{title:'Teaching in the Arctic',text:`When I accepted a job teaching at a school in a small Inuit community in northern Canada, my friends thought I had gone mad. The village, home to about eight hundred people, is only accessible by plane for most of the year. In winter, temperatures fall below minus forty and the sun does not rise for several weeks. I had grown up in Toronto and had never been further north than a ski resort.
 
 My first weeks were difficult. I had prepared lessons based on the curriculum I had used in the city, and they simply did not work. My students were bored and restless. Examples that made sense in Toronto – catching the subway, going to a shopping mall – meant nothing to children who had never seen either.
